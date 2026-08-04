@@ -1,0 +1,190 @@
+## 服务器解析漏洞
+
+**apache:**
+
+```
+  绕过程序检测：当碰到不认识的扩展名时，将会从后向前解析，直到碰到认识的扩展名为止，如果都不认识，则会暴露其源代码。
+ 在上传文件时，判断文件名是否是PHP，ASP，ASPX，ASA，CER等脚本扩展名，如果是，则不允许上传，这是可以构造类似1.php.rar等扩展名绕过程序检测，并配合解析漏洞获取webshell
+```
+
+iis
+
+```
+ 当建*.asa ，*.asp，*.cer格式的文件夹时，其目录下的任何扩展名的文件都将被IIS当做asp文件进行解析
+```
+
+当文件为*.asp;1.jpg时，IIS会以asp脚本来执行
+
+**nginx**
+
+```
+原理：Nginx实际上是PHP CGI解析漏洞，在PHP配置文件中有一个关键选项cgi.fi:x_pathinfo，一般是默认开启的，
+        所以**解析到不存在的文件时，PHP会向前递归解析，于是造成了解析漏洞。**
+```
+
+攻击者可以上传木马文件，然后在URL后面加上xxx.php(可随便命名），就可以获得网站的webshell。比如访问http://www.xxx.com/1.jpg/1.php，此时1.jpg会被当做php脚本来解析，这里的1.php是不存在的。
+
+![img](https://img2020.cnblogs.com/blog/1375459/202111/1375459-20211129140810068-604232149.png)
+
+[20：WEB漏洞-文件上传之基础及过滤方式 - zhengna - 博客园](https://www.cnblogs.com/zhengna/p/15608178.html)
+
+## 文件上传验证
+
+文件上传常见验证：后缀名，类型，文件头
+
+#### 后缀名：
+
+黑名单，白名单
+
+- 黑名单：明确不让上传的格式后缀，比如asp,php,jsp,aspx,cgi,war等，但是黑名单易被绕过，比如上传php5,Phtml等
+- 白名单：明确可以上传的格式后缀，比如jpg,png,zip,rar,gif等，推荐白名单。
+
+##### - 黑名单
+
+###### 特殊解析后缀
+
+apache服务器能够使用php解析.phtml .php3 .php5
+
+前提是apache的httpd.conf中有如下配置代码
+
+```
+AddType application/x-httpd-php .php .phtml .php3 .php5
+```
+
+因此可以上传.phtml .php3 .php5文件，绕过黑名单
+
+###### .htaccess绕过
+
+taccess上传漏洞前提条件：
+
+- 1、apache服务器。
+- 2、能够上传.htaccess文件，一般为黑名单限制。
+- 3、AllowOverride All，默认配置为关闭None。
+- 4、LoadModule rewrite_module modules/mod_rewrite.so #mod_rewrite模块为开启状态
+- 5、上传目录具有可执行权限。 
+
+.htaccess文件是Apache服务器中的一个配置文件。启用.htaccess，需要修改httpd.conf，启用AllowOverride。一旦启用.htaccess，意味着允许用户自己修改服务器的配置，可能会导致某些意想不到的修改。安全起见，应该尽可能地避免使用.htaccess文件。
+
+------
+
+eg:源码配置了黑名单，拒绝了几乎所有有问题的后缀名，除了.htaccess
+
+.htaccess作为局部变量成功作用于当前目录下文件的两个条件
+
+（1.启用AllowOverride，2.开启mod_rewrite模块）
+
+```
+修改httpd.conf:
+1、Allow Override All
+2、LoadModule rewrite_module modules/mod_rewrite.so
+```
+
+eg:
+
+先上传一个.htaccess文件:
+
+```
+<FilesMatch "hello">
+setHandler application/x-httpd-php
+</FilesMatch>
+```
+
+作用是使当前目录下所有文件名包含“hello”字符串的文件当作php文件解析。然后再上传一个hello.jpg文件，内容如下：
+
+```
+<?php phpinfo(); ?>
+```
+
+此时访问该文件web路径，服务器执行hello.jpg文件中的PHP代码。
+
+###### 大小写绕过
+
+###### 后缀名空格绕过
+
+原理是 服务器在校验黑名单时，校验的后缀名是.php+空格，由于.php+空格不在黑名单内，可以通过校验，而windows系统在保存文件时，会自动去掉后面的空格，因此文件最终保存在服务器上的后缀名为.php。（linux系统在保存文件时应该也会自动去除空格，可以自行测试一下？）
+
+###### 点绕过
+
+在后缀名中加”.”绕过
+
+###### ::$DATA绕过
+
+在php+windows的情况下，如果文件名+“::DATA”进行过滤。在php+windows的情况下，如果文件名+“::DATA”会把“::DATA”之后的数据当成文件流处理，不会检测后缀名，且保持“::DATA”之后的数据当成文件流处理，不会检测后缀名，且保持“::DATA”之前的文件名。利用windows特性，可在后缀名后面加“::$DATA”绕过
+
+###### 双写绕过
+
+黑名单过滤，将黑名单里的后缀名替换为空且只替换一次，因此可以用双写绕过
+
+##### - 白名单
+
+###### %00截断绕过
+
+0x00是十六进制表示方法，是[ascii码](https://so.csdn.net/so/search?q=ascii码&spm=1001.2101.3001.7020)为0的字符，在有些函数处理时，会把这个字符当做结束符。 系统在对[文件名](https://so.csdn.net/so/search?q=文件名&spm=1001.2101.3001.7020)的读取时，如果遇到0x00，就会认为读取已结束。
+
+GET型提交的内容会被自动进行URL解码，在POST请求中，%00不会被自动解码，需要在16进制模式中将其手动修改为00
+
+截断条件：php版本小于5.3.4，php的magic_quotes_gpc为OFF状态
+
+###### 0x00截断
+
+这种情况常出现在ASP程序中，PHP 版本<5.3.4时也会有这个情况，JSP中也会出现。
+
+如：在文件1.php.jpg中插入空字符变成：1.php.0x00.jpg中，解析后就会只剩下1.php，而空字符怎么插入的呢？通常我们会用Burp抓包后，在文件名插入一个空格，然后再HEX中找到空格对应的16进制编码“20”，把它改成00（即16进制ASCII码00，对应十进制的0），就可以插入空字符了。PS:这里的空格纯粹只是一个标记符号，便于我们找到位置，其实这里是什么字符都无所谓，只不过空格比较有特异性，方便在HEX中查找位置
+
+以上是前端0x00绕过
+
+想使用00截断绕过后端验证，除非两个条件之一：
+
+详细看[文件上传绕过之00截断_00截断绕过-CSDN博客](https://blog.csdn.net/weixin_44840696/article/details/90581104)
+
+#### 文件类型：MIME信息
+
+（content-type字段校验，可以通过抓包改包方式绕过
+
+#### 文件头：内容头信息
+
+- 每种类型的文件都有自己固定的文件头信息，比如GIF89a是git图片的文件头信息，可以通过手动在脚本文件前面增加文件头的方式绕过。
+
+上传参数名解析：明确哪些东西能修改？
+
+- Content-Dispostion：一般可更改
+- name：表单参数值，不能更改
+- filename：文件名，可以更改
+- Content-Type：文件MIME，视情况而定
+
+#### windows特性
+
+- windows下文件名不区分大小写，linux下文件名区分大小写
+- windows下ADS流特性，导致上传文件xxx.php::$DATA = xxx.php
+- windows下文件名结尾加入“.”、“空格”、“<”、“>”、“>>>”、“0x81-0xff”等字符，最终生成的文件均被windows忽略。
+
+#### 图片马
+
+在图片后面加一句话木马，直接访问图片并不能把图片当做PHP解析，因此还需要利用文件包含漏洞
+
+###### 二次渲染
+
+[22：WEB漏洞-文件上传之内容逻辑数组绕过与解析漏洞 - zhengna - 博客园](https://www.cnblogs.com/zhengna/p/15624867.html)
+
+#### 条件竞争
+
+[22：WEB漏洞-文件上传之内容逻辑数组绕过与解析漏洞 - zhengna - 博客园](https://www.cnblogs.com/zhengna/p/15624867.html)
+
+## WAF绕过
+
+- 数据溢出-防匹配（xxx...）
+- 符号变异-防匹配（' " ;）
+- 数据截断-防匹配（%00 ; 换行）
+- 重复数据-防匹配（参数多次）
+- [24：WEB漏洞-文件上传之WAF绕过及安全修复 - zhengna - 博客园](https://www.cnblogs.com/zhengna/p/15630019.html)
+
+## 修复
+
+- 后端验证：采用服务端验证模式
+- 后缀检测：基于黑名单、白名单过滤
+- MIME检测：基于上传自带类型检测
+- 内容检测：文件头，完整性校验
+
+- 自带函数过滤：参考uploadlabs函数
+- 自定义函数过滤：function check_file(){}
+- WAF防护产品：宝塔、云盾、安全公司产品等
