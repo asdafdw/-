@@ -1,0 +1,7 @@
+Start downloading 5 files.
+Success 0 第84-1天：实战SRC验证码机制挖掘分享案例.docx
+Success 2 附件/[中危]麦当劳水晶盾后台存在万能验证码.docx
+Success 1 附件/短信验证码绕过（一）.docx
+Success 4 附件/上海交大验证码爆破.docx
+Success 3 附件/验证码回显.docx
+Complete. Success: 5, Failure: 0

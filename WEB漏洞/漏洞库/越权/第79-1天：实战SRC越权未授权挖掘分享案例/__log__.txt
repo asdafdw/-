@@ -1,0 +1,10 @@
+Start downloading 8 files.
+Success 1 附件/[高危] 麦当劳水晶盾垂直越权到超管.pdf
+Success 0 第79-1天：实战SRC越权未授权挖掘分享案例.docx
+Success 3 附件/新疆交通职业技术学院--越权.docx
+Success 2 附件/越权撤回.pdf
+Success 5 附件/意见反馈处信息泄露+越权.docx
+Success 4 附件/越权修改.docx
+Success 6 附件/上海交通大学越权打包.pdf
+Success 7 附件/中国电信防控通行监管系统平台存在垂直越权.docx
+Complete. Success: 8, Failure: 0

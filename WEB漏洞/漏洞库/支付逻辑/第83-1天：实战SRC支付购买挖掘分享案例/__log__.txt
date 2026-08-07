@@ -1,0 +1,7 @@
+Start downloading 5 files.
+Success 0 第83-1天：实战SRC支付购买挖掘分享案例.docx
+Success 1 附件/支付漏洞四舍五入re.pdf
+Success 2 附件/4舍5入的支付漏洞.pdf
+Success 4 附件/越权修改支付密码.pdf
+Success 3 附件/百度文库连续包月存在支付漏洞.docx
+Complete. Success: 5, Failure: 0

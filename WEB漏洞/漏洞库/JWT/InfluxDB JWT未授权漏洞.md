@@ -1,0 +1,1 @@
+[InfluxDB JWT未授权漏洞（CVE-2019-20933）复现](https://mp.weixin.qq.com/s/obiU3BaFoZ7272z2vS0QgQ)

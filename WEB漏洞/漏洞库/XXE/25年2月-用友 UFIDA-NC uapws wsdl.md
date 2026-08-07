@@ -1,0 +1,1 @@
+[【漏洞复现】用友 UFIDA-NC uapws wsdl存在XXE漏洞](https://mp.weixin.qq.com/s/Mgd91_Iie-wZU7MqP5oCXw)
